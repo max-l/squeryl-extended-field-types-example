@@ -47,7 +47,9 @@ object MyCustomTypes extends PrimitiveTypeMode {
    * We define this one here to allow working with Option of our new type, this allso 
    * allows the 'nvl' function to work  
    */
-  implicit val optionJodaTimeTEF = new TypedExpressionFactory[Option[DateTime], TOptionTimestamp] with DeOptionizer[DateTime, TTimestamp, Option[DateTime], TOptionTimestamp] {
+  implicit val optionJodaTimeTEF = 
+    new TypedExpressionFactory[Option[DateTime], TOptionTimestamp] 
+      with DeOptionizer[Timestamp, DateTime, TTimestamp, Option[DateTime], TOptionTimestamp] {
 
     val deOptionizer = jodaTimeTEF
   }
