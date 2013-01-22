@@ -6,6 +6,7 @@ import org.joda.time._
 import java.sql.Timestamp
 import java.sql.ResultSet
 import org.squeryl.adapters.H2Adapter
+import java.util.Date
 
 /**
  * PrimitiveTypeMode being a trait, can be extended to   
@@ -60,11 +61,28 @@ object MyCustomTypes extends PrimitiveTypeMode {
   implicit def jodaTimeToTE(s: DateTime) = jodaTimeTEF.create(s)  
 
   implicit def optionJodaTimeToTE(s: Option[DateTime]) = optionJodaTimeTEF.create(s)
+  
+  
+  implicit val dateAsLongTEF = new NonPrimitiveJdbcMapper[Long, MyDateWrapper, TLong](longTEF, this) {
+    def convertFromJdbc(v: Long) = new MyDateWrapper(new Date(v))
+    def convertToJdbc(v: MyDateWrapper) = v.d.getTime
+  }
+  
+  implicit val optionDateAsLongTEF = new TypedExpressionFactory[Option[MyDateWrapper], TOptionLong] 
+    with DeOptionizer[Long, MyDateWrapper, TLong, Option[MyDateWrapper], TOptionLong]  {
+  
+      val deOptionizer = dateAsLongTEF
+  }  
 
+  implicit def dateAsLongTE(s: MyDateWrapper) = dateAsLongTEF.create(s)  
+
+  implicit def optionDateAsLongTE(s: Option[MyDateWrapper]) = optionDateAsLongTEF.create(s)
+    
+  implicit def date2MyDateWrapper(d:Date) = new MyDateWrapper(d)
 }
 
-class TimestampTester(val time: DateTime, val optionalTime: Option[DateTime]) {
-  def this(t: DateTime) = this(t, None)
+class TimestampTester(val time: DateTime, val optionalTime: Option[DateTime], val longBackedDate: MyDateWrapper) {
+  def this(t: DateTime, d: MyDateWrapper) = this(t, None, d)
 }
 
 import MyCustomTypes._
@@ -73,6 +91,9 @@ object TimestampTesterSchema extends Schema {
 
   val timestampTester = table[TimestampTester]
 }
+
+
+class MyDateWrapper(val d: Date) 
 
 object JodaTimeTests {
 
@@ -88,6 +109,7 @@ object JodaTimeTests {
     transaction {
       try { drop } catch { case e: Exception => {} }
       create
+
     }
 
     test1
@@ -101,9 +123,9 @@ object JodaTimeTests {
     val b5 = d.minusDays(5)
     val a5 = d.plusDays(5)
 
-    timestampTester.insert(new TimestampTester(b10))
-    timestampTester.insert(new TimestampTester(b5, Option(new DateTime)))
-    timestampTester.insert(new TimestampTester(a5))
+    timestampTester.insert(new TimestampTester(b10, b10.toDate))
+    timestampTester.insert(new TimestampTester(b5, Option(new DateTime), b5.toDate))
+    timestampTester.insert(new TimestampTester(a5, a5.toDate))
 
     val x1 =
       from(timestampTester)(tt =>
@@ -122,5 +144,13 @@ object JodaTimeTests {
     assert(x2.size == 2)
 
     println(x2.map(_.time).mkString("\n"))
+    
+    
+    val x3 =
+      from(timestampTester)(tt =>
+        where(tt.longBackedDate >= b5.toDate.getTime)
+          select (tt))
+          
+    assert(x3.size == 2)    
   }
 }
