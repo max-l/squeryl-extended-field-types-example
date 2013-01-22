@@ -1,4 +1,3 @@
-
 name := "squeryl-extended-field-types-example"
 
 resolvers += "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
